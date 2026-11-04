@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Input from '@/components/ui/Input';
 import Logo from '@/components/layout/Logo';
+import GoogleButton from '@/components/auth/GoogleButton';
 
 export default function SignInPage() {
   const router = useRouter();
@@ -72,6 +73,13 @@ export default function SignInPage() {
               <span>{error}</span>
             </div>
           )}
+
+          <GoogleButton onError={setError} />
+          <div className="my-5 flex items-center gap-3">
+            <div className="h-px flex-1 bg-gray-700" />
+            <span className="text-xs text-gray-500">or use email</span>
+            <div className="h-px flex-1 bg-gray-700" />
+          </div>
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
