@@ -1,22 +1,13 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import { BRAND } from "@/lib/brand";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "QuizPortal — Free Live Quiz & Presentation Platform",
-  description:
-    "Create live quizzes and interactive presentations. Students join from any phone browser. See who's sure, who's guessing and who's stuck. Free forever.",
-  keywords: [
-    "quiz",
-    "live quiz",
-    "kahoot alternative",
-    "mentimeter alternative",
-    "interactive presentation",
-    "classroom quiz",
-    "AI quiz generator",
-  ],
+  title: `${BRAND.name} — ${BRAND.tagline}`,
+  description: BRAND.description,
 };
 
 export default function RootLayout({

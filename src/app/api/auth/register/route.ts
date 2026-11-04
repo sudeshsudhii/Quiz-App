@@ -13,6 +13,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Valid email is required' }, { status: 400 });
     }
 
+    const allowedDomain = process.env.ALLOWED_EMAIL_DOMAIN?.trim().toLowerCase().replace(/^@/, '');
+    if (allowedDomain && !email.trim().toLowerCase().endsWith(`@${allowedDomain}`)) {
+      return NextResponse.json(
+        { error: `Staff accounts require an @${allowedDomain} email address` },
+        { status: 400 }
+      );
+    }
+
     if (!password || typeof password !== 'string' || password.length < 6) {
       return NextResponse.json(
         { error: 'Password must be at least 6 characters' },

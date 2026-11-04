@@ -62,7 +62,14 @@ export function verifyPassword(password: string, storedHash: string): boolean {
   }
 }
 
-const SECRET = process.env.NEXTAUTH_SECRET || 'quizportal-super-secret-key-32-chars-long';
+const SECRET = (() => {
+  const secret = process.env.NEXTAUTH_SECRET;
+  if (secret) return secret;
+  if (process.env.NODE_ENV === 'production' && process.env.NEXT_PHASE !== 'phase-production-build') {
+    throw new Error('NEXTAUTH_SECRET must be set in production');
+  }
+  return 'local-development-only-secret'; // never used in production
+})();
 
 export function createToken(payload: UserSession): string {
   const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');

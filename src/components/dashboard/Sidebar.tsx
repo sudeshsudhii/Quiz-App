@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import Logo from '@/components/layout/Logo';
 
 interface NavItem {
   label: string;
@@ -12,15 +13,10 @@ interface NavItem {
 
 const mainNav: NavItem[] = [
   { label: 'Analytics', icon: '▣', href: '/dashboard' },
-  { label: 'Sessions', icon: '◫', href: '/dashboard/sessions' },
-  { label: 'Participants', icon: '◉', href: '/dashboard/participants' },
-  { label: 'Reports', icon: '◈', href: '/dashboard/reports' },
 ];
 
 const contentNav: NavItem[] = [
   { label: 'My Quizzes', icon: '⊟', href: '/dashboard/quizzes' },
-  { label: 'Presentations', icon: '▤', href: '/dashboard/presentations' },
-  { label: 'Settings', icon: '⚙', href: '/dashboard/settings' },
 ];
 
 export default function Sidebar() {
@@ -114,14 +110,7 @@ export default function Sidebar() {
       >
         {/* Logo */}
         <div className="flex h-16 items-center gap-2 border-b border-gray-800 px-6">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-purple-600 to-indigo-600 text-sm font-bold text-white shadow-md shadow-purple-500/20">
-              Q
-            </div>
-            <span className="text-lg font-bold text-white">
-              Quiz<span className="text-purple-400">Portal</span>
-            </span>
-          </Link>
+          <Logo />
         </div>
 
         {/* Navigation */}
