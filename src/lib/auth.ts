@@ -92,10 +92,8 @@ export function verifyToken(token: string): UserSession | null {
 export async function findUserByEmail(email: string) {
   const normalizedEmail = email.toLowerCase().trim();
   try {
-    const dbUser = await prisma.user.findUnique({
-      where: { email: normalizedEmail },
-    });
-    if (dbUser) return { ...dbUser, passwordHash: dbUser.password };
+    const dbUser = await prisma.orm.public.User.where({ email: normalizedEmail }).first();
+    if (dbUser) return { ...dbUser, passwordHash: dbUser.password ?? '' };
   } catch {
     // Database connection offline, fallback to local file store
   }
@@ -110,13 +108,12 @@ export async function createUser(name: string, email: string, password: string) 
   const id = crypto.randomUUID();
 
   try {
-    const dbUser = await prisma.user.create({
-      data: {
-        id,
-        name,
-        email: normalizedEmail,
-        password: passwordHash,
-      },
+    const dbUser = await prisma.orm.public.User.create({
+      id,
+      name,
+      email: normalizedEmail,
+      password: passwordHash,
+      updatedAt: new Date(),
     });
     return { id: dbUser.id, name: dbUser.name || name, email: dbUser.email };
   } catch {
