@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getSessionUser } from '@/lib/session';
 import { listQuizzes } from '@/lib/quizzes';
+import HostQuizButton from '@/components/quiz/HostQuizButton';
 import DeleteQuizButton from '@/components/quiz/DeleteQuizButton';
 
 const createButtonClass =
@@ -96,6 +97,7 @@ async function QuizList() {
                   })}
                 </p>
                 <div className="flex items-center gap-2 border-t border-gray-800 pt-4">
+                  {quiz.isPublished && quiz.questions.length > 0 && <HostQuizButton id={quiz.id} />}
                   <Link
                     href={`/dashboard/quizzes/${quiz.id}/edit`}
                     className="flex-1 rounded-xl border border-gray-700 px-3 py-2 text-center text-sm font-medium text-gray-200 transition-colors hover:border-purple-500 hover:text-white"
