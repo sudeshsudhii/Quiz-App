@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { getQuiz, type StoredQuiz } from './quizzes';
+import { saveResult } from './results';
 
 /**
  * Live quiz sessions, kept in memory (single server process).
@@ -30,6 +31,7 @@ interface LiveSession {
   endsAt: number;
   players: Map<string, Player>;
   createdAt: number;
+  saved: boolean;
 }
 
 const MAX_AGE_MS = 6 * 60 * 60 * 1000;
@@ -67,6 +69,42 @@ function tick(s: LiveSession) {
   if (Date.now() >= s.endsAt || everyoneAnswered) s.status = 'REVEAL';
 }
 
+/** Marks the game as over and stores its results once (games with no players are skipped). */
+function endGame(s: LiveSession) {
+  s.status = 'ENDED';
+  if (s.saved || s.players.size === 0) return;
+  s.saved = true;
+  const players = [...s.players.values()];
+  try {
+    saveResult({
+      code: s.code,
+      quizId: s.quiz.id,
+      quizTitle: s.quiz.title,
+      hostId: s.hostId,
+      maxPoints: s.quiz.questions.reduce((sum, q) => sum + q.points, 0),
+      players: players.map((p) => {
+        const answers = Object.values(p.answers);
+        return {
+          name: p.name,
+          score: p.score,
+          answered: answers.length,
+          correct: answers.filter((a) => a.correct).length,
+        };
+      }),
+      questions: s.quiz.questions.map((q, i) => {
+        const answered = players.filter((p) => p.answers[i]);
+        return {
+          text: q.text,
+          answered: answered.length,
+          correct: answered.filter((p) => p.answers[i].correct).length,
+        };
+      }),
+    });
+  } catch (error) {
+    console.error('Failed to save session results:', error);
+  }
+}
+
 function startQuestion(s: LiveSession, index: number) {
   s.questionIndex = index;
   s.status = 'QUESTION';
@@ -95,6 +133,7 @@ export function createSession(hostId: string, quizId: string): string {
     endsAt: 0,
     players: new Map(),
     createdAt: Date.now(),
+    saved: false,
   });
   return code;
 }
@@ -157,12 +196,12 @@ export function hostAction(code: string, hostId: string, action: HostAction) {
       break;
     case 'next':
       if (s.status === 'REVEAL') {
-        if (s.questionIndex + 1 >= s.quiz.questions.length) s.status = 'ENDED';
+        if (s.questionIndex + 1 >= s.quiz.questions.length) endGame(s);
         else startQuestion(s, s.questionIndex + 1);
       }
       break;
     case 'end':
-      s.status = 'ENDED';
+      endGame(s);
       break;
     default:
       throw new LiveError('Unknown action');

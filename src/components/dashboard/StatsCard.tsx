@@ -2,8 +2,8 @@ interface StatsCardProps {
   icon: string;
   value: string | number;
   label: string;
-  change: string;
-  changeType: 'up' | 'down';
+  change?: string;
+  changeType?: 'up' | 'down';
 }
 
 export default function StatsCard({
@@ -19,6 +19,7 @@ export default function StatsCard({
         <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-600/20 text-lg">
           {icon}
         </span>
+        {change && (
         <span
           className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
             changeType === 'up'
@@ -37,6 +38,7 @@ export default function StatsCard({
           )}
           {change}
         </span>
+        )}
       </div>
       <p className="text-3xl font-bold text-white">{value}</p>
       <p className="mt-1 text-sm text-gray-400">{label}</p>
