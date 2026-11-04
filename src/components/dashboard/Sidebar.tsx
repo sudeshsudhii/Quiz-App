@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 
 interface NavItem {
   label: string;
@@ -25,19 +25,51 @@ const contentNav: NavItem[] = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
+  const [user, setUser] = useState<{ name: string; email: string } | null>(null);
+
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.user) {
+          setUser(data.user);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      router.push('/auth/signin');
+      router.refresh();
+    } catch {
+      router.push('/auth/signin');
+    }
+  };
 
   const isActive = (href: string) => {
     if (href === '/dashboard') return pathname === '/dashboard';
     return pathname.startsWith(href);
   };
 
+  const initials = user?.name
+    ? user.name
+        .split(' ')
+        .map((n) => n[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2)
+    : 'U';
+
   return (
     <>
       {/* Mobile toggle button */}
       <button
         onClick={() => setCollapsed(!collapsed)}
-        className="fixed left-4 top-4 z-50 rounded-lg border border-gray-700 bg-[#111827] p-2 text-gray-400 lg:hidden"
+        className="fixed left-4 top-4 z-50 rounded-lg border border-gray-700 bg-[#111827] p-2 text-gray-400 lg:hidden cursor-pointer"
         aria-label="Toggle sidebar"
       >
         <svg
@@ -82,12 +114,14 @@ export default function Sidebar() {
       >
         {/* Logo */}
         <div className="flex h-16 items-center gap-2 border-b border-gray-800 px-6">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-purple-600 to-indigo-600 text-sm font-bold text-white">
-            Q
-          </div>
-          <span className="text-lg font-bold text-white">
-            Quiz<span className="text-purple-400">Portal</span>
-          </span>
+          <Link href="/" className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-purple-600 to-indigo-600 text-sm font-bold text-white shadow-md shadow-purple-500/20">
+              Q
+            </div>
+            <span className="text-lg font-bold text-white">
+              Quiz<span className="text-purple-400">Portal</span>
+            </span>
+          </Link>
         </div>
 
         {/* Navigation */}
@@ -145,18 +179,31 @@ export default function Sidebar() {
           </ul>
         </nav>
 
-        {/* User profile */}
+        {/* User profile & Logout */}
         <div className="border-t border-gray-800 p-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-purple-600 to-indigo-600 text-sm font-semibold text-white">
-              JD
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 overflow-hidden">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-purple-600 to-indigo-600 text-xs font-bold text-white">
+                {initials}
+              </div>
+              <div className="overflow-hidden">
+                <p className="truncate text-sm font-medium text-white">
+                  {user?.name || 'Instructor'}
+                </p>
+                <p className="truncate text-xs text-gray-500">
+                  {user?.email || 'Logged in'}
+                </p>
+              </div>
             </div>
-            <div className="flex-1 overflow-hidden">
-              <p className="truncate text-sm font-medium text-white">
-                John Doe
-              </p>
-              <p className="truncate text-xs text-gray-500">Instructor</p>
-            </div>
+            <button
+              onClick={handleLogout}
+              title="Log out"
+              className="text-gray-400 hover:text-red-400 p-1.5 rounded-lg hover:bg-gray-800 transition-colors cursor-pointer"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+            </button>
           </div>
         </div>
       </aside>

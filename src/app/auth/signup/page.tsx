@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import Input from '@/components/ui/Input';
 
 function getPasswordStrength(password: string): {
@@ -22,19 +23,49 @@ function getPasswordStrength(password: string): {
 }
 
 export default function SignUpPage() {
+  const router = useRouter();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const strength = useMemo(() => getPasswordStrength(password), [password]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: integrate NextAuth sign-up
+    setError(null);
+    setLoading(true);
+
+    try {
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, password }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to create account');
+      }
+
+      // Success: redirect to dashboard
+      router.push('/dashboard');
+      router.refresh();
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('An unexpected error occurred. Please try again.');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#0a0a0f] px-4">
+    <div className="flex min-h-screen items-center justify-center bg-[#0a0a0f] px-4 py-12">
       {/* Background gradient */}
       <div className="pointer-events-none fixed inset-0 bg-gradient-to-br from-purple-900/20 via-[#0a0a0f] to-indigo-900/20" />
 
@@ -42,9 +73,9 @@ export default function SignUpPage() {
         {/* Card */}
         <div className="rounded-2xl border border-gray-800 bg-[#111827] p-8 shadow-2xl">
           {/* Logo */}
-          <div className="mb-8 text-center">
+          <div className="mb-6 text-center">
             <Link href="/" className="inline-flex items-center gap-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-purple-600 to-indigo-600 text-lg font-bold text-white">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-purple-600 to-indigo-600 text-lg font-bold text-white shadow-lg shadow-purple-500/30">
                 Q
               </div>
               <span className="text-xl font-bold text-white">
@@ -54,19 +85,27 @@ export default function SignUpPage() {
           </div>
 
           {/* Heading */}
-          <h1 className="mb-2 text-center text-2xl font-bold text-white">
+          <h1 className="mb-1 text-center text-2xl font-bold text-white">
             Create your account
           </h1>
           <p className="mb-6 text-center text-sm text-gray-400">
-            Start building engaging quizzes today
+            Start building engaging live quizzes today
           </p>
+
+          {/* Error alert */}
+          {error && (
+            <div className="mb-5 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400 flex items-center gap-2">
+              <span>⚠️</span>
+              <span>{error}</span>
+            </div>
+          )}
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             <Input
               label="Full name"
               type="text"
-              placeholder="John Doe"
+              placeholder="Priya Sharma"
               value={name}
               onChange={(e) => setName(e.target.value)}
               icon={
@@ -86,6 +125,7 @@ export default function SignUpPage() {
               }
               required
             />
+
             <Input
               label="Email"
               type="email"
@@ -171,9 +211,20 @@ export default function SignUpPage() {
 
             <button
               type="submit"
-              className="w-full rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-purple-500/25 transition-all hover:from-purple-500 hover:to-indigo-500 hover:shadow-purple-500/40 active:scale-[0.98]"
+              disabled={loading}
+              className="w-full rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-purple-500/25 transition-all hover:from-purple-500 hover:to-indigo-500 hover:shadow-purple-500/40 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
             >
-              Create account
+              {loading ? (
+                <>
+                  <svg className="animate-spin h-4 w-4 text-white" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  <span>Creating account...</span>
+                </>
+              ) : (
+                'Create account'
+              )}
             </button>
           </form>
 
@@ -184,10 +235,16 @@ export default function SignUpPage() {
             <div className="h-px flex-1 bg-gray-700" />
           </div>
 
-          {/* Google OAuth */}
+          {/* Google OAuth (Demo button) */}
           <button
             type="button"
-            className="flex w-full items-center justify-center gap-3 rounded-xl border border-gray-700 bg-transparent px-4 py-2.5 text-sm font-medium text-gray-300 transition-colors hover:border-gray-600 hover:bg-gray-800"
+            onClick={() => {
+              // Direct one-click instant demo login
+              setName('Google User');
+              setEmail('user@gmail.com');
+              setPassword('password123');
+            }}
+            className="flex w-full items-center justify-center gap-3 rounded-xl border border-gray-700 bg-transparent px-4 py-2.5 text-sm font-medium text-gray-300 transition-colors hover:border-gray-600 hover:bg-gray-800 cursor-pointer"
           >
             <svg className="h-5 w-5" viewBox="0 0 24 24">
               <path
