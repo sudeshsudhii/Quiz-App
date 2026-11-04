@@ -41,7 +41,7 @@ const OPTION_COLORS = ['bg-red-500', 'bg-blue-500', 'bg-amber-500', 'bg-emerald-
 const TIME_LIMITS = [5, 10, 20, 30, 45, 60, 90, 120];
 
 let keyCounter = 0;
-const newKey = () => `k${Date.now().toString(36)}${(keyCounter++).toString(36)}`;
+const newKey = () => `k${(keyCounter++).toString(36)}`;
 
 const blankOptions = (type: QType): DraftOption[] =>
   type === 'TRUE_FALSE'
