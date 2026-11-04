@@ -16,7 +16,7 @@ export interface SessionResult {
   questions: { text: string; answered: number; correct: number }[];
 }
 
-const DATA_DIR = path.join(process.cwd(), 'data');
+const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), 'data');
 const FILE = path.join(DATA_DIR, 'results.json');
 
 function readAll(): SessionResult[] {

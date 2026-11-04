@@ -58,7 +58,7 @@ export interface QuizInput {
   }[];
 }
 
-const DATA_DIR = path.join(process.cwd(), 'data');
+const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), 'data');
 const QUIZZES_FILE = path.join(DATA_DIR, 'quizzes.json');
 
 function readAll(): StoredQuiz[] {
