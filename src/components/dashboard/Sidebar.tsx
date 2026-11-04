@@ -109,7 +109,7 @@ export default function Sidebar() {
         `}
       >
         {/* Logo */}
-        <div className="flex h-16 items-center gap-2 border-b border-gray-800 px-6">
+        <div className="flex h-16 items-center gap-2 border-b border-gray-800 pl-16 pr-6 lg:px-6">
           <Logo />
         </div>
 

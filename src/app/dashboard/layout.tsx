@@ -9,7 +9,7 @@ export default function DashboardLayout(props: LayoutProps<'/dashboard'>) {
       </Suspense>
       {/* Main content area — offset for the sidebar */}
       <main className="lg:pl-64">
-        <div className="px-4 py-6 sm:px-6 lg:px-8">{props.children}</div>
+        <div className="px-4 pb-6 pt-20 sm:px-6 lg:px-8 lg:py-6">{props.children}</div>
       </main>
     </div>
   );
