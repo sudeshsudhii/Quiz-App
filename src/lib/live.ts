@@ -31,10 +31,14 @@ interface LiveSession {
   endsAt: number;
   players: Map<string, Player>;
   createdAt: number;
+  endedAt: number;
   saved: boolean;
 }
 
 const MAX_AGE_MS = 6 * 60 * 60 * 1000;
+const ABANDONED_MS = Number(process.env.LIVE_ABANDONED_MS) || 2 * 60 * 60 * 1000; // a game with players still open after this long is closed and saved
+const KEEP_ENDED_MS = 30 * 60 * 1000;
+const MAX_SESSIONS_PER_HOST = 10;
 const MAX_PLAYERS = 300;
 
 const g = globalThis as unknown as { __liveSessions?: Map<string, LiveSession> };
@@ -49,12 +53,22 @@ export class LiveError extends Error {
   }
 }
 
-function cleanup() {
+let lastCleanup = 0;
+
+/** Closes abandoned games (saving their results) and forgets old ones. Runs at most once a minute. */
+async function cleanup(force = false) {
   const now = Date.now();
-  for (const [code, s] of sessions) if (now - s.createdAt > MAX_AGE_MS) sessions.delete(code);
+  if (!force && now - lastCleanup < 60_000) return;
+  lastCleanup = now;
+  for (const [code, s] of [...sessions]) {
+    if (s.status !== 'ENDED' && now - s.createdAt > ABANDONED_MS) await endGame(s);
+    if (s.status === 'ENDED' && now - (s.endedAt || s.createdAt) > KEEP_ENDED_MS) sessions.delete(code);
+    else if (now - s.createdAt > MAX_AGE_MS) sessions.delete(code);
+  }
 }
 
 function getSession(code: string): LiveSession {
+  void cleanup().catch((error) => console.error('Session cleanup failed:', error));
   const s = sessions.get(code);
   if (!s) throw new LiveError('Session not found. Check the code and try again.', 404);
   tick(s);
@@ -72,6 +86,7 @@ function tick(s: LiveSession) {
 /** Marks the game as over and stores its results once (games with no players are skipped). */
 async function endGame(s: LiveSession) {
   s.status = 'ENDED';
+  s.endedAt = Date.now();
   if (s.saved || s.players.size === 0) return;
   s.saved = true;
   const players = [...s.players.values()];
@@ -114,7 +129,9 @@ function startQuestion(s: LiveSession, index: number) {
 // ---------- Commands ----------
 
 export async function createSession(hostId: string, quizId: string): Promise<string> {
-  cleanup();
+  await cleanup(true);
+  const active = [...sessions.values()].filter((s) => s.hostId === hostId && s.status !== 'ENDED').length;
+  if (active >= MAX_SESSIONS_PER_HOST) throw new LiveError('You have too many games running. End one first.');
   const quiz = await getQuiz(quizId, hostId);
   if (!quiz) throw new LiveError('Quiz not found', 404);
   if (quiz.questions.length === 0) throw new LiveError('Add at least one question before hosting');
@@ -133,6 +150,7 @@ export async function createSession(hostId: string, quizId: string): Promise<str
     endsAt: 0,
     players: new Map(),
     createdAt: Date.now(),
+    endedAt: 0,
     saved: false,
   });
   return code;

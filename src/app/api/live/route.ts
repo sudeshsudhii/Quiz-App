@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/session';
 import { createSession, LiveError } from '@/lib/live';
+import { rateLimit } from '@/lib/rate-limit';
 
 export async function POST(req: NextRequest) {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+
+  if (!rateLimit(`host:${user.id}`, 10, 60 * 1000)) {
+    return NextResponse.json({ error: 'Too many sessions started. Please wait a minute.' }, { status: 429 });
+  }
 
   try {
     const { quizId } = await req.json();

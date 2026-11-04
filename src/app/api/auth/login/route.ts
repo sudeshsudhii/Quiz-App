@@ -1,9 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { findUserByEmail, verifyPassword, createToken } from '@/lib/auth';
+import { clientIp, rateLimit } from '@/lib/rate-limit';
 
 export async function POST(req: NextRequest) {
   try {
     const { email, password } = await req.json();
+
+    const ip = clientIp(req);
+    const tenMinutes = 10 * 60 * 1000;
+    if (
+      !rateLimit(`login-ip:${ip}`, 60, tenMinutes) ||
+      !rateLimit(`login:${ip}:${String(email).toLowerCase()}`, 8, tenMinutes)
+    ) {
+      return NextResponse.json({ error: 'Too many attempts. Please wait a few minutes and try again.' }, { status: 429 });
+    }
 
     if (!email || !password) {
       return NextResponse.json(

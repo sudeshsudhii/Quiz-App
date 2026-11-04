@@ -2,11 +2,16 @@ import crypto from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { createToken, createUser, findUserByEmail } from '@/lib/auth';
 import { verifyFirebaseIdToken } from '@/lib/google';
+import { clientIp, rateLimit } from '@/lib/rate-limit';
 
 export async function POST(req: NextRequest) {
   const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
   const domain = process.env.ALLOWED_EMAIL_DOMAIN?.trim().toLowerCase().replace(/^@/, '');
   if (!projectId) return NextResponse.json({ error: 'Google sign-in is not configured' }, { status: 503 });
+
+  if (!rateLimit(`google:${clientIp(req)}`, 60, 10 * 60 * 1000)) {
+    return NextResponse.json({ error: 'Too many attempts. Please wait a few minutes.' }, { status: 429 });
+  }
 
   try {
     const { idToken } = await req.json();
