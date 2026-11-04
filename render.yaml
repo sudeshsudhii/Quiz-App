@@ -2,7 +2,7 @@ services:
   - type: web
     name: quiz-portal
     runtime: node
-    plan: starter # persistent disks need a paid plan
+    plan: free
     buildCommand: npm install && npm run build
     startCommand: npm run start
     healthCheckPath: /
@@ -11,9 +11,5 @@ services:
         value: 22
       - key: NEXTAUTH_SECRET
         generateValue: true # signs login cookies
-      - key: DATA_DIR
-        value: /var/data # accounts, quizzes and results are saved here
-    disk:
-      name: quiz-data
-      mountPath: /var/data
-      sizeGB: 1
+      - key: DATABASE_URL
+        sync: false # Supabase "Session pooler" connection string; enter it in the Render dashboard

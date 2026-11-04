@@ -24,7 +24,7 @@ async function Analytics() {
   const user = await getSessionUser();
   if (!user) redirect('/auth/signin');
 
-  const stats = computeStats(listResults(user.id));
+  const stats = computeStats(await listResults(user.id));
 
   if (stats.totalSessions === 0) {
     return (

@@ -9,7 +9,7 @@ export async function POST(req: NextRequest, ctx: RouteContext<'/api/live/[code]
   const { code } = await ctx.params;
   try {
     const { action } = await req.json();
-    hostAction(code, user.id, action as HostAction);
+    await hostAction(code, user.id, action as HostAction);
     return NextResponse.json({ success: true });
   } catch (error) {
     if (error instanceof LiveError) return NextResponse.json({ error: error.message }, { status: error.status });

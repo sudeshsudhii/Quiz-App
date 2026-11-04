@@ -6,7 +6,7 @@ export async function GET() {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
 
-  return NextResponse.json({ quizzes: listQuizzes(user.id) });
+  return NextResponse.json({ quizzes: await listQuizzes(user.id) });
 }
 
 export async function POST(req: NextRequest) {
@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const input = parseQuizInput(await req.json());
-    const quiz = createQuiz(user.id, input);
+    const quiz = await createQuiz(user.id, input);
     return NextResponse.json({ quiz }, { status: 201 });
   } catch (error) {
     if (error instanceof QuizValidationError) {

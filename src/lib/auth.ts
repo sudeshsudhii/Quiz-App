@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
-import prisma from './prisma';
+import { getPool } from './db';
 
 export interface UserSession {
   id: string;
@@ -91,15 +91,16 @@ export function verifyToken(token: string): UserSession | null {
 
 export async function findUserByEmail(email: string) {
   const normalizedEmail = email.toLowerCase().trim();
-  try {
-    const dbUser = await prisma.orm.public.User.where({ email: normalizedEmail }).first();
-    if (dbUser) return { ...dbUser, passwordHash: dbUser.password ?? '' };
-  } catch {
-    // Database connection offline, fallback to local file store
+  const pool = getPool();
+  if (pool) {
+    const { rows } = await pool.query(
+      'select id, name, email, password_hash from app_users where email = $1',
+      [normalizedEmail]
+    );
+    const row = rows[0];
+    return row ? { id: row.id as string, name: row.name as string, email: row.email as string, passwordHash: row.password_hash as string } : null;
   }
-
-  const localUsers = getLocalUsers();
-  return localUsers.find((u) => u.email === normalizedEmail) || null;
+  return getLocalUsers().find((u) => u.email === normalizedEmail) || null;
 }
 
 export async function createUser(name: string, email: string, password: string) {
@@ -107,17 +108,13 @@ export async function createUser(name: string, email: string, password: string) 
   const passwordHash = hashPassword(password);
   const id = crypto.randomUUID();
 
-  try {
-    const dbUser = await prisma.orm.public.User.create({
-      id,
-      name,
-      email: normalizedEmail,
-      password: passwordHash,
-      updatedAt: new Date(),
-    });
-    return { id: dbUser.id, name: dbUser.name || name, email: dbUser.email };
-  } catch {
-    // Database connection offline, fallback to local file store
+  const pool = getPool();
+  if (pool) {
+    await pool.query(
+      'insert into app_users (id, name, email, password_hash) values ($1, $2, $3, $4)',
+      [id, name, normalizedEmail, passwordHash]
+    );
+    return { id, name, email: normalizedEmail };
   }
 
   const localUsers = getLocalUsers();
@@ -133,4 +130,3 @@ export async function createUser(name: string, email: string, password: string) 
 
   return { id: newUser.id, name: newUser.name, email: newUser.email };
 }
-

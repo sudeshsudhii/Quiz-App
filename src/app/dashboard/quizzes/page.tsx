@@ -44,7 +44,7 @@ async function QuizList() {
   const user = await getSessionUser();
   if (!user) redirect('/auth/signin');
 
-  const quizzes = listQuizzes(user.id);
+  const quizzes = await listQuizzes(user.id);
 
   return (
     <>

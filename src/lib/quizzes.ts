@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
+import { getPool } from './db';
 
 /**
  * Quiz storage.
@@ -77,6 +78,8 @@ function writeAll(quizzes: StoredQuiz[]) {
   fs.writeFileSync(tmp, JSON.stringify(quizzes, null, 2), 'utf-8');
   fs.renameSync(tmp, QUIZZES_FILE);
 }
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // ---------- Validation ----------
 
@@ -182,19 +185,33 @@ function buildQuestions(input: QuizInput): StoredQuestion[] {
   }));
 }
 
-// ---------- CRUD ----------
+// ---------- CRUD (Postgres when DATABASE_URL is set, otherwise a JSON file) ----------
 
-export function listQuizzes(authorId: string): StoredQuiz[] {
+export async function listQuizzes(authorId: string): Promise<StoredQuiz[]> {
+  const pool = getPool();
+  if (pool) {
+    const { rows } = await pool.query(
+      'select data from app_quizzes where author_id = $1 order by updated_at desc',
+      [authorId]
+    );
+    return rows.map((r) => r.data as StoredQuiz);
+  }
   return readAll()
     .filter((q) => q.authorId === authorId)
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }
 
-export function getQuiz(id: string, authorId: string): StoredQuiz | null {
+export async function getQuiz(id: string, authorId: string): Promise<StoredQuiz | null> {
+  const pool = getPool();
+  if (pool) {
+    if (!UUID.test(id)) return null;
+    const { rows } = await pool.query('select data from app_quizzes where id = $1 and author_id = $2', [id, authorId]);
+    return rows[0] ? (rows[0].data as StoredQuiz) : null;
+  }
   return readAll().find((q) => q.id === id && q.authorId === authorId) ?? null;
 }
 
-export function createQuiz(authorId: string, input: QuizInput): StoredQuiz {
+export async function createQuiz(authorId: string, input: QuizInput): Promise<StoredQuiz> {
   const now = new Date().toISOString();
   const quiz: StoredQuiz = {
     id: crypto.randomUUID(),
@@ -206,30 +223,56 @@ export function createQuiz(authorId: string, input: QuizInput): StoredQuiz {
     updatedAt: now,
     questions: buildQuestions(input),
   };
+  const pool = getPool();
+  if (pool) {
+    await pool.query('insert into app_quizzes (id, author_id, data) values ($1, $2, $3)', [
+      quiz.id,
+      authorId,
+      JSON.stringify(quiz),
+    ]);
+    return quiz;
+  }
   const all = readAll();
   all.push(quiz);
   writeAll(all);
   return quiz;
 }
 
-export function updateQuiz(id: string, authorId: string, input: QuizInput): StoredQuiz | null {
-  const all = readAll();
-  const index = all.findIndex((q) => q.id === id && q.authorId === authorId);
-  if (index === -1) return null;
+export async function updateQuiz(id: string, authorId: string, input: QuizInput): Promise<StoredQuiz | null> {
+  const existing = await getQuiz(id, authorId);
+  if (!existing) return null;
   const updated: StoredQuiz = {
-    ...all[index],
+    ...existing,
     title: input.title,
     description: input.description ?? null,
     isPublished: input.isPublished ?? false,
     updatedAt: new Date().toISOString(),
     questions: buildQuestions(input),
   };
+  const pool = getPool();
+  if (pool) {
+    await pool.query('update app_quizzes set data = $1, updated_at = $2 where id = $3 and author_id = $4', [
+      JSON.stringify(updated),
+      updated.updatedAt,
+      id,
+      authorId,
+    ]);
+    return updated;
+  }
+  const all = readAll();
+  const index = all.findIndex((q) => q.id === id && q.authorId === authorId);
   all[index] = updated;
   writeAll(all);
   return updated;
 }
 
-export function deleteQuiz(id: string, authorId: string): boolean {
+export async function deleteQuiz(id: string, authorId: string): Promise<boolean> {
+  const pool = getPool();
+  if (pool) {
+    if (!UUID.test(id)) return false;
+    const res = await pool.query('delete from app_quizzes where id = $1 and author_id = $2', [id, authorId]);
+    return (res.rowCount ?? 0) > 0;
+  }
   const all = readAll();
   const remaining = all.filter((q) => !(q.id === id && q.authorId === authorId));
   if (remaining.length === all.length) return false;

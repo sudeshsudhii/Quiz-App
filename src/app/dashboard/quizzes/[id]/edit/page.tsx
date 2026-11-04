@@ -18,7 +18,7 @@ async function EditQuiz({ params }: { params: Promise<{ id: string }> }) {
   if (!user) redirect('/auth/signin');
 
   const { id } = await params;
-  const quiz = getQuiz(id, user.id);
+  const quiz = await getQuiz(id, user.id);
   if (!quiz) notFound();
 
   return (

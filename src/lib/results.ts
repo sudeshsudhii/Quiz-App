@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
+import { getPool } from './db';
 
 /** Results of finished live games, stored in data/results.json (same approach as quizzes). */
 
@@ -28,16 +29,32 @@ function readAll(): SessionResult[] {
   }
 }
 
-export function saveResult(result: Omit<SessionResult, 'id' | 'endedAt'>) {
+export async function saveResult(result: Omit<SessionResult, 'id' | 'endedAt'>) {
+  const full: SessionResult = { ...result, id: crypto.randomUUID(), endedAt: new Date().toISOString() };
+  const pool = getPool();
+  if (pool) {
+    await pool.query('insert into app_results (id, host_id, data, ended_at) values ($1, $2, $3, $4)', [
+      full.id,
+      full.hostId,
+      JSON.stringify(full),
+      full.endedAt,
+    ]);
+    return;
+  }
   const all = readAll();
-  all.push({ ...result, id: crypto.randomUUID(), endedAt: new Date().toISOString() });
+  all.push(full);
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
   const tmp = `${FILE}.${process.pid}.tmp`;
   fs.writeFileSync(tmp, JSON.stringify(all, null, 2), 'utf-8');
   fs.renameSync(tmp, FILE);
 }
 
-export function listResults(hostId: string): SessionResult[] {
+export async function listResults(hostId: string): Promise<SessionResult[]> {
+  const pool = getPool();
+  if (pool) {
+    const { rows } = await pool.query('select data from app_results where host_id = $1 order by ended_at asc', [hostId]);
+    return rows.map((r) => r.data as SessionResult);
+  }
   return readAll()
     .filter((r) => r.hostId === hostId)
     .sort((a, b) => a.endedAt.localeCompare(b.endedAt));

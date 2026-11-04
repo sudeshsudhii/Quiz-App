@@ -70,13 +70,13 @@ function tick(s: LiveSession) {
 }
 
 /** Marks the game as over and stores its results once (games with no players are skipped). */
-function endGame(s: LiveSession) {
+async function endGame(s: LiveSession) {
   s.status = 'ENDED';
   if (s.saved || s.players.size === 0) return;
   s.saved = true;
   const players = [...s.players.values()];
   try {
-    saveResult({
+    await saveResult({
       code: s.code,
       quizId: s.quiz.id,
       quizTitle: s.quiz.title,
@@ -113,9 +113,9 @@ function startQuestion(s: LiveSession, index: number) {
 
 // ---------- Commands ----------
 
-export function createSession(hostId: string, quizId: string): string {
+export async function createSession(hostId: string, quizId: string): Promise<string> {
   cleanup();
-  const quiz = getQuiz(quizId, hostId);
+  const quiz = await getQuiz(quizId, hostId);
   if (!quiz) throw new LiveError('Quiz not found', 404);
   if (quiz.questions.length === 0) throw new LiveError('Add at least one question before hosting');
 
@@ -182,7 +182,7 @@ export function submitAnswer(code: string, playerId: string, optionIds: unknown)
 
 export type HostAction = 'start' | 'reveal' | 'next' | 'end';
 
-export function hostAction(code: string, hostId: string, action: HostAction) {
+export async function hostAction(code: string, hostId: string, action: HostAction) {
   const s = getSession(code);
   if (s.hostId !== hostId) throw new LiveError('Only the host can do that', 403);
 
@@ -201,7 +201,7 @@ export function hostAction(code: string, hostId: string, action: HostAction) {
       }
       break;
     case 'end':
-      endGame(s);
+      await endGame(s);
       break;
     default:
       throw new LiveError('Unknown action');

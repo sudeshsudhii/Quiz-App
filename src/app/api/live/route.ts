@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
   try {
     const { quizId } = await req.json();
     if (typeof quizId !== 'string') throw new LiveError('quizId is required');
-    return NextResponse.json({ code: createSession(user.id, quizId) }, { status: 201 });
+    return NextResponse.json({ code: await createSession(user.id, quizId) }, { status: 201 });
   } catch (error) {
     if (error instanceof LiveError) return NextResponse.json({ error: error.message }, { status: error.status });
     return NextResponse.json({ error: 'Could not start session' }, { status: 400 });
